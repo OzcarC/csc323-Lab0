@@ -57,7 +57,7 @@ def score(inp):
 
 def isEnglish(inp, exp):
     scored,freq = score(inp)
-    if (exp-0.2) <= scored <= (exp+0.2):
+    if (exp-0.5) <= scored <= (exp+0.5):
         return scored, freq
     return None, None
 
@@ -106,40 +106,42 @@ def multiByteXor(fileName):
     f = open(fileName, 'r')
 
     ciphertext = byteToHex(b64ToBin(f.read()))
-    length, keyedStr, keyedFreq = findKeyLen(ciphertext, 10)
+    info = findKeyLen(ciphertext, 10)
     decStrings = []
+    for tup in info:
+        length = tup[0]
+        for i in range(0, length, 1):
+            keyedStr = "".join(everyXHex(ciphertext, i, length))
+            scored, keyedFreq = score(keyedStr)
+            if scored:
+                mostCommonChar = max(keyedFreq, key=keyedFreq.get)
+                potKeys = []
+                commonChars = [' ', 'e', 'E', 't', 'T', 'a', 'A']
+                for commChar in commonChars:
+                    potKeys.append(xor(hexToByte(mostCommonChar), hexToByte(stringToHex(commChar))))
+                bitsFH = hexToByte(keyedStr)
+                for keys in potKeys:
+                    try:
+                        msg = charXOR(bitsFH, keys)
+                        # print("Using key: " + keys + "\t on shift #" + str(i) + "\n" + msg + "\n\n________________________")
+                    except ValueError:
+                        # print("Failed Using key " + keys + " on iteration #" + str(i) + "\n\n________________________")
+                        continue
+                    except Exception:
+                        # print("Likely not english. Using key " + keys + " on iteration #" + str(i) + "\n\n________________________")
+                        continue
+                    else:
+                        decStrings.append(msg)
 
-    for i in range(0, length, 1):
-        keyedStr = "".join(everyXHex(ciphertext, i, length))
-        scored, keyedFreq = score(keyedStr)
-        if scored:
-            mostCommonChar = max(keyedFreq, key=keyedFreq.get)
-            potKeys = []
-            commonChars = [' ', 'e', 'E', 't', 'T', 'a', 'A']
-            for commChar in commonChars:
-                potKeys.append(xor(hexToByte(mostCommonChar), hexToByte(stringToHex(commChar))))
-            bitsFH = hexToByte(keyedStr)
-            for keys in potKeys:
-                try:
-                    msg = charXOR(bitsFH, keys)
-                    print("Using key: " + keys + "\t on shift #" + str(i) + "\n" + msg + "\n\n________________________")
-                except ValueError:
-                    print("Failed Using key " + keys + " on iteration #" + str(i) + "\n\n________________________")
-                except Exception:
-                    print("Likely not english. Using key " + keys + " on iteration #" + str(
-                        i) + "\n\n________________________")
-                else:
-                    decStrings.append(msg)
+        longest = len(max(decStrings, key=len))
+        fullString = []
+        for i in range(longest):
+            for decStr in decStrings:
+                if i < len(decStr):
+                    fullString.append(decStr[i])
+        fullString = "".join(fullString)
 
-    longest = len(max(decStrings, key=len))
-    fullString = []
-    for i in range(longest):
-        for decStr in decStrings:
-            if i < len(decStr):
-                fullString.append(decStr[i])
-    fullString = "".join(fullString)
-
-    print(fullString)
+        print(fullString)
 
 def everyXHex(inp, start, step):
     ans = ""
@@ -148,6 +150,7 @@ def everyXHex(inp, start, step):
     return ans
 
 def findKeyLen(inp, amount):
+    possibleInfo = []
     workingStrs = []
     sepInp = [inp[i:i + 2] for i in range(0, len(inp), 2)]
     for i in range(1,amount,1):
@@ -161,9 +164,10 @@ def findKeyLen(inp, amount):
     # mInp = ""
     for i in range(len(workingStrs)):
         scored, freq = isEnglish(workingStrs[i], 1.73)
-        if scored and abs(scored-1.73) < m:
-            m, mFreq, mLen, mInp = scored, freq, i+1, workingStrs[i]
-    return mLen, mInp, mFreq
+        if scored: #and abs(scored-1.73) < m:
+            info = (i+1, freq, workingStrs[i])
+            possibleInfo.append(info)
+    return possibleInfo
 
 def shift(inp, amount):
     shifted = inp + amount
@@ -174,36 +178,47 @@ def shift(inp, amount):
     return shifted
 
 # singleByteXor('Lab0.TaskII.B.txt')
-# multiByteXor('Lab0.TaskII.C.txt')
+multiByteXor('Lab0.TaskII.C.txt')
 
 f = open('Lab0.TaskII.D.txt')
 
 ciphertext = stringToHex(f.read())
-print(ciphertext)
-lengths, keyedStr, keyedFreq = findKeyLen(ciphertext,50)
-decStrings = []
+info = findKeyLen(ciphertext,10)
+bestLength = info[0][0]
+lengths = []
+for currLen in range(bestLength,bestLength*5, bestLength):
+    lengths.append(currLen)
 for length in lengths:
+    decStrings = []
+    key = ""
     for i in range(0, length, 1):
-        xHexed = everyXHex(ciphertext,i,length)
-        keyedStr = "".join(xHexed)
+        keyedStr = everyXHex(ciphertext,i,length)
         scored, keyedFreq = score(keyedStr)
-        keyedStr = [hexToInt(xHexed[j:j+2]) for j in range(0, len(xHexed), 2)]
-        if scored>-1:
+        keyedStr = [hexToInt(keyedStr[j:j+2]) for j in range(0, len(keyedStr), 2)]
+        if scored > -1:
             mostCommonChar = hexToInt(max(keyedFreq, key=keyedFreq.get))
             potKeys = []
-            commonChars = [ord('E'), ord('T'), ord('A')]
+            commonChars = [j for j in range(65,91,1)]
             for commChar in commonChars:
                 potKeys.append(commChar-mostCommonChar)
             minWeirdCount = len(keyedStr) + 1
+            maxGoodCount = 0
             bestMsg = "Too Weird"
             shifted = 0
+            bestKey = 'A'
             for keys in potKeys:
                 msg = "".join([chr(shift(s,keys)) for s in keyedStr])
                 weirdCount = msg.count("Z") + msg.count("Q") + msg.count("X") + msg.count("J")
-                if weirdCount < minWeirdCount:
+                goodCount = msg.count("E") + msg.count("T") + msg.count("A") + msg.count("O")
+                if goodCount/(weirdCount+1) > maxGoodCount/(minWeirdCount+1):
                     bestMsg = msg
                     minWeirdCount = weirdCount
+                    maxGoodCount = goodCount
                     shifted = keys
+                    if(shifted > 0):
+                        shifted = 26-keys
+                    bestKey = chr(abs(shifted)+65)
+            key+=bestKey
             # print("Using shift: " + str(shifted) + "\t on char number:" + str(i) + "\n" + bestMsg + "\n\n________________________")
             decStrings.append(bestMsg)
 
@@ -214,4 +229,4 @@ for length in lengths:
             if i < len(decStr):
                 fullString.append(decStr[i])
     fullString = "".join(fullString)
-    print(fullString)
+    print("\n________________________________________\nUsing Key: "+key+" message:\n"+fullString)
