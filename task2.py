@@ -75,7 +75,11 @@ def charXOR(inp, key):
     sepInp = [inp[i:i + 8] for i in range(0, len(inp), 8)]
     for byte in sepInp:
         bth = byteToHex(xor(byte,key))
-        result += hexToAscii(bth)
+        charVal = int(bth, 16)
+        if (32<= charVal <= 126) or (charVal == 10):
+            result += hexToAscii(bth)
+        else:
+            raise Exception("Character out of range")
     return result
 
 def stringToHex(inp):
@@ -91,10 +95,19 @@ def singleByteXor(fileName):
             potKeys.append(xor(hexToByte(mostCommonChar), hexToByte(stringToHex(commChar))))
         bitsFH = hexToByte(result[i])
         for keys in potKeys:
-            print("Using key: "+keys+"\n"+charXOR(bitsFH, keys)+"\n\n")
+            try:
+                print("Using key: " + keys + "\n" + charXOR(bitsFH, keys) + "\n\n")
+            except ValueError:
+                continue
 
 def multiByteXor(fileName):
     return None
+
+def everyXHex(inp, start, step):
+    ans = ""
+    for i in range(start*2, len(inp), step*2):
+        ans+=inp[i:i+2]
+    return ans
 
 def findKeyLen(inp):
     workingStrs = []
@@ -107,23 +120,41 @@ def findKeyLen(inp):
     m = -10
     mFreq = {}
     mLen = 0
+    mInp = ""
     for i in range(len(workingStrs)):
         scored, freq = isEnglish(workingStrs[i], 1.73)
         if scored and scored > m:
-            m, mFreq, mLen = scored, freq, i+1
-    mInp = workingStrs[i]
+            m, mFreq, mLen, mInp = scored, freq, i+1, workingStrs[i]
     return mLen, mInp, mFreq
 
-singleByteXor('Lab0.TaskII.B.txt')
+# singleByteXor('Lab0.TaskII.B.txt')
 
 test = byteToHex(b64ToBin("LhfQy3oVDtrLehURx4I/QRjbg3oVFpWTMgRZ04h9ayrbiDURWfGIPQYAlaM1Bh6VhjQFWfGVdEE9x4J6CAqVhi5BDd2CegUW2pVQMxzUgyNBDdrHNwAS0Mc7D1nQiS4TGNuEP0EK2sc4ABrexzUPWcCXUEk61JIpBFnMiC9BEtuILUEO0MAoBFnUhTUUDZWTNUEL3Jd6Eg3AgTxBDMXOems+3JE/QRTQxy4JHJWKMwIL2pcyDhfQxzwIC8aTehIWla56AhjbxzgUCsHHNggS0Mc7QRvAhTgNHL+kNQwJwYg0QRjbg3otFtuAeiMc1IQyQQ3agD8VEdCVeg8WwscjDgyVjDQODpWeNRRZ3Il6FQvakjgNHL+mMw9ewcc0Dg3djjQGWdeSLkEYlaB6FRHUiT1NWdeGOBhZv7MtDlnZiDlGHNHHNRQNlYMvBRzGxykOWcKCfRMclYQoAAPM7R4EGMGPejMWwsczElnBjz9BFdSFPw1ZwY87FVnFhiMSWdiCUDQX04Y+BBjXiz9BCtrHKg0c1JQ/QR3aiX0VWcGVI0EN2sc8AB3Qxy4JEMbt"))
 length, keyedStr, keyedFreq = findKeyLen(test)
+decStrings = []
 
-mostCommonChar = max(keyedFreq, key=keyedFreq.get)
-potKeys = []
-commonChars = [' ', 'e','E', 't', 'T', 'a','A']
-# for commChar in commonChars:
-#     potKeys.append(xor(hexToByte(mostCommonChar), hexToByte(stringToHex(commChar))))
-# bitsFH = hexToByte(keyedStr)
-# for keys in potKeys:
-#     print("Using key: "+keys+"\n"+charXOR(bitsFH, keys)+"\n\n")
+for i in range(0, length, 1):
+    keyedStr = "".join(everyXHex(test, i, length))
+    scored, keyedFreq = score(keyedStr)
+    if scored:
+        mostCommonChar = max(keyedFreq, key=keyedFreq.get)
+        potKeys = []
+        commonChars = [' ', 'e', 'E', 't', 'T', 'a', 'A']
+        for commChar in commonChars:
+            potKeys.append(xor(hexToByte(mostCommonChar), hexToByte(stringToHex(commChar))))
+        bitsFH = hexToByte(keyedStr)
+        for keys in potKeys:
+            try:
+                msg = charXOR(bitsFH, keys)
+                print("Using key: " + keys + "\t on shift #" +str(i)+ "\n" + msg + "\n\n________________________")
+            except ValueError:
+                print("Failed Using key "+keys+" on iteration #"+str(i)+"\n\n________________________")
+            except Exception:
+                print("Likely not english. Using key "+keys+" on iteration #"+str(i)+"\n\n________________________")
+            else:
+                decStrings.append(msg)
+
+longest = max(decStrings, key=len)
+for decStr in decStrings:
+
+print(decStrings)
