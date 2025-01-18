@@ -17,6 +17,8 @@ def hexToByte(hex):
             ans += temp
     return ans
 
+def hexToInt(hex):
+    return int(hex,16)
 def b64ToBin(inp):
     dec = base64.b64decode(inp)
     dec = "".join(["{:08b}".format(x) for x in dec])
@@ -55,7 +57,7 @@ def score(inp):
 
 def isEnglish(inp, exp):
     scored,freq = score(inp)
-    if (exp-0.5) <= scored <= (exp+0.5):
+    if (exp-0.2) <= scored <= (exp+0.2):
         return scored, freq
     return None, None
 
@@ -104,7 +106,7 @@ def multiByteXor(fileName):
     f = open(fileName, 'r')
 
     ciphertext = byteToHex(b64ToBin(f.read()))
-    length, keyedStr, keyedFreq = findKeyLen(ciphertext)
+    length, keyedStr, keyedFreq = findKeyLen(ciphertext, 10)
     decStrings = []
 
     for i in range(0, length, 1):
@@ -145,23 +147,71 @@ def everyXHex(inp, start, step):
         ans+=inp[i:i+2]
     return ans
 
-def findKeyLen(inp):
+def findKeyLen(inp, amount):
     workingStrs = []
     sepInp = [inp[i:i + 2] for i in range(0, len(inp), 2)]
-    for i in range(1,10,1):
+    for i in range(1,amount,1):
         if len(workingStrs) < i:
             workingStrs.append("")
         for j in range(0, len(sepInp), i):
             workingStrs[i-1] += sepInp[j]
-    m = -10
-    mFreq = {}
-    mLen = 0
-    mInp = ""
+    # m = 10
+    # mFreq = {}
+    # mLen = 0
+    # mInp = ""
     for i in range(len(workingStrs)):
         scored, freq = isEnglish(workingStrs[i], 1.73)
-        if scored and scored > m:
+        if scored and abs(scored-1.73) < m:
             m, mFreq, mLen, mInp = scored, freq, i+1, workingStrs[i]
     return mLen, mInp, mFreq
 
+def shift(inp, amount):
+    shifted = inp + amount
+    if shifted < 65:
+        shifted += 26
+    elif shifted > 90:
+        shifted -= 26
+    return shifted
+
 # singleByteXor('Lab0.TaskII.B.txt')
 # multiByteXor('Lab0.TaskII.C.txt')
+
+f = open('Lab0.TaskII.D.txt')
+
+ciphertext = stringToHex(f.read())
+print(ciphertext)
+lengths, keyedStr, keyedFreq = findKeyLen(ciphertext,50)
+decStrings = []
+for length in lengths:
+    for i in range(0, length, 1):
+        xHexed = everyXHex(ciphertext,i,length)
+        keyedStr = "".join(xHexed)
+        scored, keyedFreq = score(keyedStr)
+        keyedStr = [hexToInt(xHexed[j:j+2]) for j in range(0, len(xHexed), 2)]
+        if scored>-1:
+            mostCommonChar = hexToInt(max(keyedFreq, key=keyedFreq.get))
+            potKeys = []
+            commonChars = [ord('E'), ord('T'), ord('A')]
+            for commChar in commonChars:
+                potKeys.append(commChar-mostCommonChar)
+            minWeirdCount = len(keyedStr) + 1
+            bestMsg = "Too Weird"
+            shifted = 0
+            for keys in potKeys:
+                msg = "".join([chr(shift(s,keys)) for s in keyedStr])
+                weirdCount = msg.count("Z") + msg.count("Q") + msg.count("X") + msg.count("J")
+                if weirdCount < minWeirdCount:
+                    bestMsg = msg
+                    minWeirdCount = weirdCount
+                    shifted = keys
+            # print("Using shift: " + str(shifted) + "\t on char number:" + str(i) + "\n" + bestMsg + "\n\n________________________")
+            decStrings.append(bestMsg)
+
+    longest = len(max(decStrings, key=len))
+    fullString = []
+    for i in range(longest):
+        for decStr in decStrings:
+            if i < len(decStr):
+                fullString.append(decStr[i])
+    fullString = "".join(fullString)
+    print(fullString)
