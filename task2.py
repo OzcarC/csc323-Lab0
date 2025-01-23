@@ -87,6 +87,42 @@ def charXOR(inp, key):
 def stringToHex(inp):
     return inp.encode('utf-8').hex()
 
+
+def everyXHex(inp, start, step):
+    ans = ""
+    for i in range(start*2, len(inp), step*2):
+        ans+=inp[i:i+2]
+    return ans
+
+def findKeyLen(inp, amount):
+    possibleInfo = []
+    workingStrs = []
+    sepInp = [inp[i:i + 2] for i in range(0, len(inp), 2)]
+    for i in range(1,amount,1):
+        if len(workingStrs) < i:
+            workingStrs.append("")
+        for j in range(0, len(sepInp), i):
+            workingStrs[i-1] += sepInp[j]
+    # m = 10
+    # mFreq = {}
+    # mLen = 0
+    # mInp = ""
+    for i in range(len(workingStrs)):
+        scored, freq = isEnglish(workingStrs[i], 1.73)
+        if scored: #and abs(scored-1.73) < m:
+            info = (i+1, freq, workingStrs[i])
+            possibleInfo.append(info)
+    return possibleInfo
+
+def shift(inp, amount):
+    shifted = inp + amount
+    if shifted < 65:
+        shifted += 26
+    elif shifted > 90:
+        shifted -= 26
+    return shifted
+
+
 def singleByteXor(fileName):
     result, freqResult = findString(fileName)
     for i in range(len(freqResult)):
@@ -101,6 +137,7 @@ def singleByteXor(fileName):
                 print("Using key: " + keys + "\n" + charXOR(bitsFH, keys) + "\n\n")
             except Exception:
                 continue
+
 
 def multiByteXor(fileName):
     f = open(fileName, 'r')
@@ -142,40 +179,6 @@ def multiByteXor(fileName):
         fullString = "".join(fullString)
 
         print(fullString)
-
-def everyXHex(inp, start, step):
-    ans = ""
-    for i in range(start*2, len(inp), step*2):
-        ans+=inp[i:i+2]
-    return ans
-
-def findKeyLen(inp, amount):
-    possibleInfo = []
-    workingStrs = []
-    sepInp = [inp[i:i + 2] for i in range(0, len(inp), 2)]
-    for i in range(1,amount,1):
-        if len(workingStrs) < i:
-            workingStrs.append("")
-        for j in range(0, len(sepInp), i):
-            workingStrs[i-1] += sepInp[j]
-    # m = 10
-    # mFreq = {}
-    # mLen = 0
-    # mInp = ""
-    for i in range(len(workingStrs)):
-        scored, freq = isEnglish(workingStrs[i], 1.73)
-        if scored: #and abs(scored-1.73) < m:
-            info = (i+1, freq, workingStrs[i])
-            possibleInfo.append(info)
-    return possibleInfo
-
-def shift(inp, amount):
-    shifted = inp + amount
-    if shifted < 65:
-        shifted += 26
-    elif shifted > 90:
-        shifted -= 26
-    return shifted
 
 def vigCipher(filename):
     f = open(filename)
