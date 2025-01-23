@@ -99,7 +99,7 @@ def singleByteXor(fileName):
         for keys in potKeys:
             try:
                 print("Using key: " + keys + "\n" + charXOR(bitsFH, keys) + "\n\n")
-            except ValueError:
+            except Exception:
                 continue
 
 def multiByteXor(fileName):
@@ -177,56 +177,58 @@ def shift(inp, amount):
         shifted -= 26
     return shifted
 
-# singleByteXor('Lab0.TaskII.B.txt')
+def vigCipher(filename):
+    f = open(filename)
+
+    ciphertext = stringToHex(f.read())
+    info = findKeyLen(ciphertext,10)
+    bestLength = info[0][0]
+    lengths = []
+    for currLen in range(bestLength,bestLength*5, bestLength):
+        lengths.append(currLen)
+    for length in lengths:
+        decStrings = []
+        key = ""
+        for i in range(0, length, 1):
+            keyedStr = everyXHex(ciphertext,i,length)
+            scored, keyedFreq = score(keyedStr)
+            keyedStr = [hexToInt(keyedStr[j:j+2]) for j in range(0, len(keyedStr), 2)]
+            if scored > -1:
+                mostCommonChar = hexToInt(max(keyedFreq, key=keyedFreq.get))
+                potKeys = []
+                commonChars = [j for j in range(65,91,1)]
+                for commChar in commonChars:
+                    potKeys.append(commChar-mostCommonChar)
+                minWeirdCount = len(keyedStr) + 1
+                maxGoodCount = 0
+                bestMsg = "Too Weird"
+                shifted = 0
+                bestKey = 'A'
+                for keys in potKeys:
+                    msg = "".join([chr(shift(s,keys)) for s in keyedStr])
+                    weirdCount = msg.count("Z") + msg.count("Q") + msg.count("X") + msg.count("J")
+                    goodCount = msg.count("E") + msg.count("T") + msg.count("A") + msg.count("O")
+                    if goodCount/(weirdCount+1) > maxGoodCount/(minWeirdCount+1):
+                        bestMsg = msg
+                        minWeirdCount = weirdCount
+                        maxGoodCount = goodCount
+                        shifted = keys
+                        if(shifted > 0):
+                            shifted = 26-keys
+                        bestKey = chr(abs(shifted)+65)
+                key+=bestKey
+                # print("Using shift: " + str(shifted) + "\t on char number:" + str(i) + "\n" + bestMsg + "\n\n________________________")
+                decStrings.append(bestMsg)
+
+        longest = len(max(decStrings, key=len))
+        fullString = []
+        for i in range(longest):
+            for decStr in decStrings:
+                if i < len(decStr):
+                    fullString.append(decStr[i])
+        fullString = "".join(fullString)
+        print("\n________________________________________\nUsing Key: "+key+" message:\n"+fullString)
+
+singleByteXor('Lab0.TaskII.B.txt')
 multiByteXor('Lab0.TaskII.C.txt')
-
-f = open('Lab0.TaskII.D.txt')
-
-ciphertext = stringToHex(f.read())
-info = findKeyLen(ciphertext,10)
-bestLength = info[0][0]
-lengths = []
-for currLen in range(bestLength,bestLength*5, bestLength):
-    lengths.append(currLen)
-for length in lengths:
-    decStrings = []
-    key = ""
-    for i in range(0, length, 1):
-        keyedStr = everyXHex(ciphertext,i,length)
-        scored, keyedFreq = score(keyedStr)
-        keyedStr = [hexToInt(keyedStr[j:j+2]) for j in range(0, len(keyedStr), 2)]
-        if scored > -1:
-            mostCommonChar = hexToInt(max(keyedFreq, key=keyedFreq.get))
-            potKeys = []
-            commonChars = [j for j in range(65,91,1)]
-            for commChar in commonChars:
-                potKeys.append(commChar-mostCommonChar)
-            minWeirdCount = len(keyedStr) + 1
-            maxGoodCount = 0
-            bestMsg = "Too Weird"
-            shifted = 0
-            bestKey = 'A'
-            for keys in potKeys:
-                msg = "".join([chr(shift(s,keys)) for s in keyedStr])
-                weirdCount = msg.count("Z") + msg.count("Q") + msg.count("X") + msg.count("J")
-                goodCount = msg.count("E") + msg.count("T") + msg.count("A") + msg.count("O")
-                if goodCount/(weirdCount+1) > maxGoodCount/(minWeirdCount+1):
-                    bestMsg = msg
-                    minWeirdCount = weirdCount
-                    maxGoodCount = goodCount
-                    shifted = keys
-                    if(shifted > 0):
-                        shifted = 26-keys
-                    bestKey = chr(abs(shifted)+65)
-            key+=bestKey
-            # print("Using shift: " + str(shifted) + "\t on char number:" + str(i) + "\n" + bestMsg + "\n\n________________________")
-            decStrings.append(bestMsg)
-
-    longest = len(max(decStrings, key=len))
-    fullString = []
-    for i in range(longest):
-        for decStr in decStrings:
-            if i < len(decStr):
-                fullString.append(decStr[i])
-    fullString = "".join(fullString)
-    print("\n________________________________________\nUsing Key: "+key+" message:\n"+fullString)
+vigCipher('Lab0.TaskII.D.txt')
